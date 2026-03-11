@@ -1,0 +1,54 @@
+technique_id: T1070.004
+name: File Deletion (Defense Evasion)
+tactic: Defense Evasion
+description: >
+  Simulates the deletion of files to cover tracks after an attack, a common
+  defense evasion technique. Attackers often delete logs, tools, or payloads
+  after use to hinder forensic investigation.
+platforms: [windows]
+
+payloads:
+  - name: Create and delete a benign file
+    executor: powershell
+    elevation_required: false
+    command: >
+      $path = "$env:TEMP\attacksight_test_artifact.txt";
+      New-Item -Path $path -ItemType File -Value "AttackSight test artifact" -Force | Out-Null;
+      Write-Host "[AttackSight] File created: $path";
+      Remove-Item -Path $path -Force;
+      Write-Host "[AttackSight] File deleted (simulating cleanup behavior)."
+    cleanup: ""
+    description: >
+      Creates a benign temp file and deletes it to generate Sysmon file creation
+      and deletion events (EID 11 and EID 23).
+
+  - name: Delete via cmd (alternate executor)
+    executor: cmd
+    elevation_required: false
+    command: >
+      echo AttackSight test > %TEMP%\attacksight_cmd_test.txt &&
+      del /f /q %TEMP%\attacksight_cmd_test.txt &&
+      echo [AttackSight] File created and deleted via cmd.exe
+    cleanup: ""
+    description: Simulates cmd.exe-based file deletion, triggering process and file events.
+
+expected_logs:
+  - source: Microsoft-Windows-Sysmon/Operational
+    event_id: 11
+    field_hints:
+      TargetFilename: "*attacksight*"
+  - source: Microsoft-Windows-Sysmon/Operational
+    event_id: 23
+    field_hints:
+      TargetFilename: "*attacksight*"
+
+sigma_rules:
+  - sigma_rules/file_delete_win_susp_temp_deletion.yml
+
+mitre:
+  tactic: Defense Evasion
+  technique: T1070.004
+  url: https://attack.mitre.org/techniques/T1070/004/
+
+references:
+  - https://attack.mitre.org/techniques/T1070/004/

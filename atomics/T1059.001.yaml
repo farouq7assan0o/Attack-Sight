@@ -1,0 +1,49 @@
+technique_id: T1059.001
+name: PowerShell Encoded Command Execution
+tactic: Execution
+description: >
+  Simulates fileless PowerShell execution using Base64-encoded commands,
+  a common technique used by threat actors to evade script-based detection.
+platforms: [windows]
+
+payloads:
+  - name: Base64 encoded benign command
+    executor: powershell
+    elevation_required: false
+    command: >
+      powershell.exe -EncodedCommand JABzACAAPQAgACcAdABlAHMAdAAnADsAIABXAHIAaQB0AGUALQBIAG8AcwB0ACAAJABzAA==
+    # Decoded: $s = 'test'; Write-Host $s  (completely benign)
+    cleanup: ""
+    description: Executes a benign Base64-encoded PowerShell command to trigger Sysmon EID 1 and Security EID 4688
+
+  - name: PowerShell with bypass flag
+    executor: powershell
+    elevation_required: false
+    command: >
+      powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "Write-Host 'AttackSight Test'"
+    cleanup: ""
+    description: Simulates execution policy bypass, commonly seen in malicious scripts
+
+expected_logs:
+  - source: Microsoft-Windows-Sysmon/Operational
+    event_id: 1
+    field_hints:
+      CommandLine: "-EncodedCommand"
+      Image: "powershell.exe"
+  - source: Security
+    event_id: 4688
+    field_hints:
+      NewProcessName: "powershell.exe"
+
+sigma_rules:
+  - sigma_rules/proc_creation_win_powershell_encoded.yml
+  - sigma_rules/proc_creation_win_powershell_bypass.yml
+
+mitre:
+  tactic: Execution
+  technique: T1059.001
+  url: https://attack.mitre.org/techniques/T1059/001/
+
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://github.com/redcanaryco/atomic-red-team/blob/master/atomics/T1059.001/T1059.001.yaml

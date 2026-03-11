@@ -1,0 +1,48 @@
+technique_id: T1547.001
+name: Registry Run Key Persistence
+tactic: Persistence
+description: >
+  Simulates persistence via Registry Run keys, one of the most common and
+  oldest persistence mechanisms used by malware. Adds and immediately removes
+  a benign test entry to trigger detection without leaving artifacts.
+platforms: [windows]
+
+payloads:
+  - name: Add benign registry run key
+    executor: powershell
+    elevation_required: false
+    command: >
+      New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+      -Name "AttackSightTest"
+      -Value "C:\Windows\System32\notepad.exe"
+      -PropertyType String -Force;
+      Write-Host "[AttackSight] Registry run key added."
+    cleanup: >
+      Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+      -Name "AttackSightTest" -ErrorAction SilentlyContinue;
+      Write-Host "[AttackSight] Cleanup complete."
+    description: >
+      Adds a benign notepad.exe entry under HKCU Run key to simulate
+      malware persistence behavior. Immediately cleaned up after execution.
+
+expected_logs:
+  - source: Microsoft-Windows-Sysmon/Operational
+    event_id: 13
+    field_hints:
+      TargetObject: "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run\\AttackSightTest"
+      EventType: "SetValue"
+  - source: Security
+    event_id: 4657
+    field_hints:
+      ObjectName: "\\REGISTRY\\USER\\*\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+
+sigma_rules:
+  - sigma_rules/registry_set_run_key_persistence.yml
+
+mitre:
+  tactic: Persistence
+  technique: T1547.001
+  url: https://attack.mitre.org/techniques/T1547/001/
+
+references:
+  - https://attack.mitre.org/techniques/T1547/001/

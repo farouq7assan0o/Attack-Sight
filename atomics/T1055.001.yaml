@@ -1,0 +1,57 @@
+technique_id: T1055.001
+name: Dynamic-link Library Injection (Simulation)
+tactic: Defense Evasion / Privilege Escalation
+description: >
+  Simulates DLL injection behavior by performing the observable steps that
+  precede actual injection (process enumeration, handle queries) without
+  performing real injection. Designed to trigger the same detection signals
+  without any system risk.
+platforms: [windows]
+
+payloads:
+  - name: Process handle enumeration (injection precursor)
+    executor: powershell
+    elevation_required: false
+    command: >
+      $targets = Get-Process | Where-Object { $_.Name -in @('explorer','svchost') } |
+      Select-Object Id, Name, HandleCount;
+      Write-Host "[AttackSight] Simulating injection target enumeration:";
+      $targets | ForEach-Object { Write-Host "  PID: $($_.Id)  Name: $($_.Name)" }
+    cleanup: ""
+    description: >
+      Enumerates common injection targets (explorer, svchost) to trigger
+      process access monitoring events. No actual injection performed.
+
+  - name: Suspicious LoadLibrary call simulation via rundll32
+    executor: cmd
+    elevation_required: false
+    command: >
+      rundll32.exe shell32.dll,Control_RunDLL &&
+      echo [AttackSight] rundll32 invocation simulated.
+    cleanup: ""
+    description: >
+      Invokes rundll32 with a benign system DLL to generate process creation
+      events commonly associated with DLL injection abuse.
+
+expected_logs:
+  - source: Microsoft-Windows-Sysmon/Operational
+    event_id: 1
+    field_hints:
+      Image: "rundll32.exe"
+      CommandLine: "shell32.dll"
+  - source: Microsoft-Windows-Sysmon/Operational
+    event_id: 7
+    field_hints:
+      ImageLoaded: "shell32.dll"
+
+sigma_rules:
+  - sigma_rules/proc_creation_win_rundll32_susp_activity.yml
+  - sigma_rules/image_load_win_dll_injection_via_rundll32.yml
+
+mitre:
+  tactic: Defense Evasion, Privilege Escalation
+  technique: T1055.001
+  url: https://attack.mitre.org/techniques/T1055/001/
+
+references:
+  - https://attack.mitre.org/techniques/T1055/001/

@@ -1,0 +1,54 @@
+technique_id: T1003.001
+name: LSASS Memory Access (Benign Simulation)
+tactic: Credential Access
+description: >
+  Simulates access to the LSASS process, commonly targeted by credential dumping tools
+  such as Mimikatz. This atomic uses a benign process to open a handle to LSASS,
+  triggering the same detection signals without extracting any credentials.
+platforms: [windows]
+
+payloads:
+  - name: LSASS handle open via PowerShell (benign)
+    executor: powershell
+    elevation_required: true
+    command: >
+      $lsass = Get-Process lsass;
+      Write-Host "[AttackSight] LSASS PID detected: $($lsass.Id)";
+      Write-Host "[AttackSight] Simulation complete. No credentials accessed."
+    cleanup: ""
+    description: >
+      Opens a reference to LSASS using Get-Process (no memory read).
+      Triggers process enumeration events (Sysmon EID 10 when configured).
+
+  - name: Procdump-style flag simulation (safe)
+    executor: powershell
+    elevation_required: true
+    command: >
+      $proc = Get-Process lsass | Select-Object Id, Name, HandleCount;
+      Write-Host "[AttackSight] Process info: $proc"
+    cleanup: ""
+    description: >
+      Simulates recon behavior targeting LSASS metadata without dumping memory.
+
+expected_logs:
+  - source: Microsoft-Windows-Sysmon/Operational
+    event_id: 10
+    field_hints:
+      TargetImage: "lsass.exe"
+      GrantedAccess: "0x1010"
+  - source: Security
+    event_id: 4656
+    field_hints:
+      ObjectName: "lsass.exe"
+
+sigma_rules:
+  - sigma_rules/proc_access_win_lsass_access.yml
+
+mitre:
+  tactic: Credential Access
+  technique: T1003.001
+  url: https://attack.mitre.org/techniques/T1003/001/
+
+references:
+  - https://attack.mitre.org/techniques/T1003/001/
+  - https://www.elastic.co/blog/detecting-credential-dumping-with-elastic-security
