@@ -8,19 +8,18 @@ description: >
 platforms: [windows]
 
 payloads:
-  - name: Create and delete a benign file
+  - name: Delete PowerShell console history
     executor: powershell
     elevation_required: false
     command: >
-      $path = "$env:TEMP\attacksight_test_artifact.txt";
-      New-Item -Path $path -ItemType File -Value "AttackSight test artifact" -Force | Out-Null;
-      Write-Host "[AttackSight] File created: $path";
-      Remove-Item -Path $path -Force;
-      Write-Host "[AttackSight] File deleted (simulating cleanup behavior)."
+      $histPath = "$env:APPDATA\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt";
+      if (!(Test-Path $histPath)) { New-Item -Path $histPath -Force | Out-Null };
+      Remove-Item -Path $histPath -Force;
+      Write-Host "[AttackSight] PowerShell history deleted (T1070.004 simulation)"
     cleanup: ""
     description: >
-      Creates a benign temp file and deletes it to generate Sysmon file creation
-      and deletion events (EID 11 and EID 23).
+      Deletes the PowerShell console history file to simulate attacker
+      covering tracks. Triggers Sysmon EID 23 (file deletion).
 
   - name: Delete via cmd (alternate executor)
     executor: cmd
@@ -34,16 +33,16 @@ payloads:
 
 expected_logs:
   - source: Microsoft-Windows-Sysmon/Operational
-    event_id: 11
-    field_hints:
-      TargetFilename: "*attacksight*"
-  - source: Microsoft-Windows-Sysmon/Operational
     event_id: 23
+    field_hints:
+      TargetFilename: "*ConsoleHost_history*"
+  - source: Microsoft-Windows-Sysmon/Operational
+    event_id: 11
     field_hints:
       TargetFilename: "*attacksight*"
 
 sigma_rules:
-  - sigma_rules/file_delete_win_susp_temp_deletion.yml
+  - sigma_rules/file_delete_win_delete_powershell_command_history.yml
 
 mitre:
   tactic: Defense Evasion

@@ -36,7 +36,7 @@ expected_logs:
       NewProcessName: "powershell.exe"
 
 sigma_rules:
-  - sigma_rules/proc_creation_win_powershell_encoded.yml
+  - sigma_rules/proc_creation_win_powershell_base64_encoded_cmd.yml
   - sigma_rules/proc_creation_win_powershell_bypass.yml
 
 mitre:

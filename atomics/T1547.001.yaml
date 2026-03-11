@@ -37,7 +37,8 @@ expected_logs:
       ObjectName: "\\REGISTRY\\USER\\*\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
 
 sigma_rules:
-  - sigma_rules/registry_set_run_key_persistence.yml
+  - sigma_rules/registry_set_susp_run_key_img_folder.yml
+  - sigma_rules/registry_set_powershell_in_run_keys.yml
 
 mitre:
   tactic: Persistence
